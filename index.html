@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parallel Circuit Master - Basic Electronics Lab</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        techDark: '#0f172a',
+                        techCard: '#1e293b',
+                        techBorder: '#334155',
+                        circuitCyan: '#06b6d4',
+                        circuitAmber: '#f59e0b',
+                        circuitGreen: '#10b981',
+                        circuitRose: '#f43f5e',
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'Courier New', 'monospace'],
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts & Font Awesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Custom Circuit Animation Styles */
+        .current-particle {
+            stroke-dasharray: 6, 8;
+            animation: flow 1s linear infinite;
+        }
+        .current-particle-reverse {
+            stroke-dasharray: 6, 8;
+            animation: flow-reverse 1s linear infinite;
+        }
+        @keyframes flow {
+            from { stroke-dashoffset: 28; }
+            to { stroke-dashoffset: 0; }
+        }
+        @keyframes flow-reverse {
+            from { stroke-dashoffset: 0; }
+            to { stroke-dashoffset: 28; }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Input field formatting */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-techDark text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-cyan-500 selection:text-slate-900">
+
+    <!-- Navigation Header -->
+    <header class="border-b border-techBorder bg-slate-900/90 backdrop-blur sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3">
+                <div class="p-2.5 bg-gradient-to-tr from-cyan-600 to-emerald-500 rounded-xl shadow-lg shadow-cyan-500/20 text-white">
+                    <i class="fa-solid fa-microchip text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 bg-clip-text text-transparent">
+                        Parallel Circuit Master
+                    </h1>
+                    <p class="text-xs text-slate-400">Basic Electronics Interactive Solver & Lab</p>
+                </div>
+            </div>
+
+            <!-- Mode & Branch Controls -->
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                <!-- Mode Selector -->
+                <div class="bg-slate-800 p-1 rounded-lg border border-techBorder flex text-xs font-semibold">
+                    <button id="btn-mode-explorer" onclick="setAppMode('explorer')" 
+                            class="px-3 py-1.5 rounded-md transition-all duration-200 flex items-center space-x-1.5 text-slate-300 hover:text-white">
+                        <i class="fa-solid fa-sliders text-cyan-400"></i>
+                        <span class="hidden sm:inline">Interactive</span> Workbench
+                    </button>
+                    <button id="btn-mode-practice" onclick="setAppMode('practice')" 
+                            class="px-3 py-1.5 rounded-md transition-all duration-200 flex items-center space-x-1.5 text-slate-300 hover:text-white">
+                        <i class="fa-solid fa-graduation-cap text-amber-400"></i>
+                        <span>Practice Quiz</span>
+                    </button>
+                </div>
+
+                <!-- Branch Count Selector -->
+                <div class="bg-slate-800 p-1 rounded-lg border border-techBorder flex text-xs font-medium">
+                    <button id="btn-branch-2" onclick="setBranchCount(2)" class="px-2.5 py-1.5 rounded-md transition-all">2 Branches</button>
+                    <button id="btn-branch-3" onclick="setBranchCount(3)" class="px-2.5 py-1.5 rounded-md transition-all">3 Branches</button>
+                </div>
+
+                <!-- Reference Formula Modal Trigger Button -->
+                <button onclick="toggleModal('formula-modal')" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-cyan-400 rounded-lg border border-techBorder transition" title="Formulas & Reference Sheet">
+                    <i class="fa-solid fa-book-bookmark text-base"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT COLUMN: Schematic & Visual Analytics (7 cols) -->
+        <section class="lg:col-span-7 flex flex-col space-y-6">
+            
+            <!-- Circuit Diagram Container -->
+            <div class="bg-techCard border border-techBorder rounded-2xl p-5 shadow-xl relative overflow-hidden flex flex-col justify-between">
+                <!-- Card Header with Flow controls -->
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-2">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-300">
+                            Schematic Diagram (<span id="branch-count-label">2</span> Parallel Branches)
+                        </h2>
+                    </div>
+
+                    <div class="flex items-center space-x-3 text-xs">
+                        <!-- Current Flow Direction Toggle -->
+                        <button onclick="toggleCurrentDirection()" class="text-slate-400 hover:text-cyan-400 flex items-center space-x-1.5 bg-slate-800/80 px-2.5 py-1 rounded border border-slate-700 transition">
+                            <i class="fa-solid fa-arrows-rotate text-cyan-400"></i>
+                            <span id="current-dir-text">Conventional Flow (+${\to}-$)</span>
+                        </button>
+                        <!-- Animation Toggle -->
+                        <button onclick="toggleAnimation()" id="anim-toggle-btn" class="text-slate-400 hover:text-emerald-400 bg-slate-800/80 px-2 py-1 rounded border border-slate-700 transition" title="Pause Flow Animation">
+                            <i class="fa-solid fa-pause"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SVG Visual Canvas -->
+                <div class="w-full bg-slate-950/70 border border-slate-800/80 rounded-xl p-4 flex items-center justify-center min-h-[300px] sm:min-h-[340px] relative">
+                    <svg id="circuit-svg" class="w-full h-auto max-h-[360px]" viewBox="0 0 600 320" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Rendered dynamically via JavaScript -->
+                    </svg>
+                </div>
+
+                <!-- Schematic Legend / Quick Metrics -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-800/80 text-center">
+                    <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block font-mono uppercase">Source Voltage ($V_S$)</span>
+                        <span id="stat-vs" class="text-base font-mono font-bold text-cyan-400">12.0 V</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block font-mono uppercase">Equiv Resistance ($R_{eq}$)</span>
+                        <span id="stat-req" class="text-base font-mono font-bold text-emerald-400">6.00 kΩ</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block font-mono uppercase">Total Current ($I_T$)</span>
+                        <span id="stat-it" class="text-base font-mono font-bold text-amber-400">2.00 mA</span>
+                    </div>
+                    <div class="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                        <span class="text-[11px] text-slate-400 block font-mono uppercase">Total Power ($P_T$)</span>
+                        <span id="stat-pt" class="text-base font-mono font-bold text-rose-400">24.0 mW</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visual Current Distribution & Conductance Bar Chart -->
+            <div class="bg-techCard border border-techBorder rounded-2xl p-5 shadow-xl flex flex-col space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-slate-300 flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-bar text-cyan-400"></i>
+                        <span>Current Division & Conductance Breakdown</span>
+                    </h3>
+                    <span class="text-xs text-slate-400 italic">KCL: $I_T = I_1 + I_2 (+ I_3)$</span>
+                </div>
+
+                <!-- Current Distribution Progress Bars -->
+                <div id="current-bars-container" class="space-y-3">
+                    <!-- Dynamic Branch Bars generated here -->
+                </div>
+
+                <!-- Conductance Concept Callout -->
+                <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 text-xs text-slate-300 leading-relaxed flex items-start space-x-3">
+                    <div class="p-2 bg-amber-500/10 text-amber-400 rounded-lg shrink-0 mt-0.5">
+                        <i class="fa-solid fa-lightbulb"></i>
+                    </div>
+                    <div>
+                        <strong class="text-amber-300">Key Parallel Rule:</strong> Equal voltage drop exists across all branches ($V_S = V_1 = V_2 = V_3$). Adding parallel branches <em>increases total conductance ($G = 1/R$)</em> and <em>lowers total equivalent resistance ($R_{eq}$)</em>!
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- RIGHT COLUMN: Interaction Panel (Explorer Controls or Practice Form) (5 cols) -->
+        <section class="lg:col-span-5 flex flex-col space-y-6">
+
+            <!-- PANEL 1: INTERACTIVE WORKBENCH (Active in Explorer Mode) -->
+            <div id="panel-explorer" class="bg-techCard border border-techBorder rounded-2xl p-5 shadow-xl flex flex-col space-y-5">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-200">Circuit Parameter Workbench</h2>
+                        <p class="text-xs text-slate-400">Set resistances from 1 Ω up to 100 MΩ using standard units.</p>
+                    </div>
+                    <button onclick="resetExplorerDefaults()" class="text-xs text-slate-400 hover:text-cyan-400 transition" title="Reset default values">
+                        <i class="fa-solid fa-arrow-rotate-left mr-1"></i>Reset
+                    </button>
+                </div>
+
+                <!-- Voltage Source Input -->
+                <div class="space-y-1.5 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-semibold text-cyan-400 flex items-center space-x-2">
+                            <i class="fa-solid fa-bolt"></i>
+                            <span>Source Voltage ($V_S$)</span>
+                        </label>
+                        <span id="vs-val-display" class="font-mono text-xs font-bold text-slate-200">12.0 V</span>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <input type="range" id="input-vs-range" min="1" max="120" step="0.5" value="12"
+                               oninput="onExplorerValueChange('vs', this.value)" 
+                               class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+                        <input type="number" id="input-vs-number" min="0.1" max="1000" value="12" step="0.1"
+                               oninput="onExplorerValueChange('vs', this.value)"
+                               class="w-20 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-right text-xs font-mono font-bold text-slate-100 focus:outline-none focus:border-cyan-500">
+                    </div>
+                </div>
+
+                <!-- Resistor 1 Input -->
+                <div class="space-y-1.5 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-semibold text-amber-400 flex items-center space-x-2">
+                            <i class="fa-solid fa-resistor"></i>
+                            <span>Branch 1 Resistor ($R_1$)</span>
+                        </label>
+                        <span id="r1-val-display" class="font-mono text-xs font-bold text-slate-200">10.0 kΩ</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="range" id="input-r1-range" min="0" max="8" step="0.01" value="4"
+                               oninput="onLogSliderChange('r1', this.value)" 
+                               class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500">
+                        <input type="number" id="input-r1-number" min="1" max="999" value="10" step="any"
+                               oninput="onResistorInputChange('r1')"
+                               class="w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-right text-xs font-mono font-bold text-slate-100 focus:outline-none focus:border-amber-500">
+                        <select id="input-r1-unit" onchange="onResistorInputChange('r1')"
+                                class="bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-xs font-mono font-bold text-amber-400 focus:outline-none focus:border-amber-500">
+                            <option value="1">Ω</option>
+                            <option value="1000" selected>kΩ</option>
+                            <option value="1000000">MΩ</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Resistor 2 Input -->
+                <div class="space-y-1.5 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-semibold text-emerald-400 flex items-center space-x-2">
+                            <i class="fa-solid fa-resistor"></i>
+                            <span>Branch 2 Resistor ($R_2$)</span>
+                        </label>
+                        <span id="r2-val-display" class="font-mono text-xs font-bold text-slate-200">15.0 kΩ</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="range" id="input-r2-range" min="0" max="8" step="0.01" value="4.176"
+                               oninput="onLogSliderChange('r2', this.value)" 
+                               class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+                        <input type="number" id="input-r2-number" min="1" max="999" value="15" step="any"
+                               oninput="onResistorInputChange('r2')"
+                               class="w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-right text-xs font-mono font-bold text-slate-100 focus:outline-none focus:border-emerald-500">
+                        <select id="input-r2-unit" onchange="onResistorInputChange('r2')"
+                                class="bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:border-emerald-500">
+                            <option value="1">Ω</option>
+                            <option value="1000" selected>kΩ</option>
+                            <option value="1000000">MΩ</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Resistor 3 Input (Conditional) -->
+                <div id="container-r3-input" class="space-y-1.5 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 hidden">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-semibold text-purple-400 flex items-center space-x-2">
+                            <i class="fa-solid fa-resistor"></i>
+                            <span>Branch 3 Resistor ($R_3$)</span>
+                        </label>
+                        <span id="r3-val-display" class="font-mono text-xs font-bold text-slate-200">30.0 kΩ</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <input type="range" id="input-r3-range" min="0" max="8" step="0.01" value="4.477"
+                               oninput="onLogSliderChange('r3', this.value)" 
+                               class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500">
+                        <input type="number" id="input-r3-number" min="1" max="999" value="30" step="any"
+                               oninput="onResistorInputChange('r3')"
+                               class="w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-right text-xs font-mono font-bold text-slate-100 focus:outline-none focus:border-purple-500">
+                        <select id="input-r3-unit" onchange="onResistorInputChange('r3')"
+                                class="bg-slate-800 border border-slate-700 rounded px-1.5 py-1 text-xs font-mono font-bold text-purple-400 focus:outline-none focus:border-purple-500">
+                            <option value="1">Ω</option>
+                            <option value="1000" selected>kΩ</option>
+                            <option value="1000000">MΩ</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Detailed Computed Component Table -->
+                <div class="pt-2">
+                    <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Calculated Component Matrix</h3>
+                    <div class="overflow-x-auto rounded-lg border border-slate-800">
+                        <table class="w-full text-left text-xs font-mono">
+                            <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px]">
+                                <tr>
+                                    <th class="px-3 py-2">Branch</th>
+                                    <th class="px-3 py-2">Resist.</th>
+                                    <th class="px-3 py-2">Voltage</th>
+                                    <th class="px-3 py-2">Current</th>
+                                    <th class="px-3 py-2">Power</th>
+                                </tr>
+                            </thead>
+                            <tbody id="matrix-table-body" class="divide-y divide-slate-800/60 bg-slate-900/30">
+                                <!-- Generated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL 2: PRACTICE QUIZ MODE (Active in Practice Mode) -->
+            <div id="panel-practice" class="bg-techCard border border-techBorder rounded-2xl p-5 shadow-xl flex flex-col space-y-5 hidden">
+                
+                <!-- Practice Header & Streak Counter -->
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-200">Practice Problem Solver</h2>
+                        <p class="text-xs text-slate-400">Calculate circuit totals and individual branch currents.</p>
+                    </div>
+                    <div class="flex items-center space-x-2 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full">
+                        <i class="fa-solid fa-fire text-amber-400 text-sm"></i>
+                        <span id="quiz-streak-count" class="font-mono text-xs font-bold text-amber-300">Streak: 0</span>
+                    </div>
+                </div>
+
+                <!-- Difficulty & Generator Controls -->
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center space-x-1 bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
+                        <button onclick="setDifficulty('easy')" id="diff-easy" class="px-2.5 py-1 rounded transition">Easy</button>
+                        <button onclick="setDifficulty('medium')" id="diff-medium" class="px-2.5 py-1 rounded transition">Medium</button>
+                        <button onclick="setDifficulty('hard')" id="diff-hard" class="px-2.5 py-1 rounded transition">Hard</button>
+                    </div>
+                    <button onclick="generateNewQuizProblem()" class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-lg shadow-cyan-600/20 transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-shuffle"></i>
+                        <span>New Circuit</span>
+                    </button>
+                </div>
+
+                <!-- Practice Inputs Form -->
+                <div class="space-y-3.5 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                    <p class="text-xs font-medium text-slate-300">
+                        Given: <span id="quiz-given-text" class="font-mono text-cyan-300 font-bold">V_S = 12V, R1 = 10kΩ, R2 = 15kΩ</span>
+                    </p>
+
+                    <!-- Equivalent Resistance Answer -->
+                    <div class="flex flex-col space-y-1">
+                        <label class="text-xs text-slate-400 flex justify-between">
+                            <span>1. Total Equivalent Resistance ($R_{eq}$)</span>
+                        </label>
+                        <div class="flex items-center space-x-2 relative">
+                            <input type="number" id="quiz-input-req" placeholder="e.g. 6.00" step="any"
+                                   class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:border-cyan-500 pr-10">
+                            <select id="quiz-unit-req" class="bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-cyan-400 rounded-lg px-2 py-2 focus:outline-none">
+                                <option value="1">Ω</option>
+                                <option value="1000" selected>kΩ</option>
+                                <option value="1000000">MΩ</option>
+                            </select>
+                            <span id="badge-req" class="absolute right-20 top-2.5 text-xs hidden"></span>
+                        </div>
+                    </div>
+
+                    <!-- Total Current Answer -->
+                    <div class="flex flex-col space-y-1">
+                        <label class="text-xs text-slate-400 flex justify-between">
+                            <span>2. Total Source Current ($I_T$)</span>
+                        </label>
+                        <div class="flex items-center space-x-2 relative">
+                            <input type="number" id="quiz-input-it" placeholder="e.g. 2.00" step="any"
+                                   class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:border-cyan-500 pr-10">
+                            <select id="quiz-unit-it" class="bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-amber-400 rounded-lg px-2 py-2 focus:outline-none">
+                                <option value="1">A</option>
+                                <option value="0.001" selected>mA</option>
+                                <option value="0.000001">µA</option>
+                            </select>
+                            <span id="badge-it" class="absolute right-20 top-2.5 text-xs hidden"></span>
+                        </div>
+                    </div>
+
+                    <!-- Branch 1 Current Answer -->
+                    <div class="flex flex-col space-y-1">
+                        <label class="text-xs text-slate-400 flex justify-between">
+                            <span>3. Branch 1 Current ($I_1$)</span>
+                        </label>
+                        <div class="flex items-center space-x-2 relative">
+                            <input type="number" id="quiz-input-i1" placeholder="e.g. 1.20" step="any"
+                                   class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:border-cyan-500 pr-10">
+                            <select id="quiz-unit-i1" class="bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-amber-400 rounded-lg px-2 py-2 focus:outline-none">
+                                <option value="1">A</option>
+                                <option value="0.001" selected>mA</option>
+                                <option value="0.000001">µA</option>
+                            </select>
+                            <span id="badge-i1" class="absolute right-20 top-2.5 text-xs hidden"></span>
+                        </div>
+                    </div>
+
+                    <!-- Branch 2 Current Answer -->
+                    <div class="flex flex-col space-y-1">
+                        <label class="text-xs text-slate-400 flex justify-between">
+                            <span>4. Branch 2 Current ($I_2$)</span>
+                        </label>
+                        <div class="flex items-center space-x-2 relative">
+                            <input type="number" id="quiz-input-i2" placeholder="e.g. 0.80" step="any"
+                                   class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:border-cyan-500 pr-10">
+                            <select id="quiz-unit-i2" class="bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-emerald-400 rounded-lg px-2 py-2 focus:outline-none">
+                                <option value="1">A</option>
+                                <option value="0.001" selected>mA</option>
+                                <option value="0.000001">µA</option>
+                            </select>
+                            <span id="badge-i2" class="absolute right-20 top-2.5 text-xs hidden"></span>
+                        </div>
+                    </div>
+
+                    <!-- Branch 3 Current Answer (Conditional) -->
+                    <div id="quiz-container-i3" class="flex flex-col space-y-1 hidden">
+                        <label class="text-xs text-slate-400 flex justify-between">
+                            <span>5. Branch 3 Current ($I_3$)</span>
+                        </label>
+                        <div class="flex items-center space-x-2 relative">
+                            <input type="number" id="quiz-input-i3" placeholder="e.g. 0.40" step="any"
+                                   class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:border-cyan-500 pr-10">
+                            <select id="quiz-unit-i3" class="bg-slate-800 border border-slate-700 text-xs font-mono font-bold text-purple-400 rounded-lg px-2 py-2 focus:outline-none">
+                                <option value="1">A</option>
+                                <option value="0.001" selected>mA</option>
+                                <option value="0.000001">µA</option>
+                            </select>
+                            <span id="badge-i3" class="absolute right-20 top-2.5 text-xs hidden"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit & Solution Actions -->
+                <div class="flex items-center gap-3">
+                    <button onclick="checkQuizAnswers()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 px-4 rounded-xl shadow-lg shadow-emerald-600/20 transition text-sm flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>Check Answers</span>
+                    </button>
+                    <button onclick="toggleModal('solution-modal')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 px-3 rounded-xl border border-slate-700 transition text-sm flex items-center justify-center space-x-1.5" title="View Step-by-Step Breakdown">
+                        <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+                        <span>Solution</span>
+                    </button>
+                </div>
+
+                <!-- Quiz Feedback Notification Banner -->
+                <div id="quiz-feedback-banner" class="hidden p-3 rounded-xl text-xs flex items-center space-x-2.5 transition">
+                    <i id="quiz-feedback-icon" class="text-base"></i>
+                    <span id="quiz-feedback-msg" class="font-medium"></span>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- MODAL 1: Step-By-Step Solution Modal -->
+    <div id="solution-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-techCard border border-techBorder w-full max-w-2xl rounded-2xl shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2 text-emerald-400">
+                    <i class="fa-solid fa-calculator text-lg"></i>
+                    <h3 class="text-base font-bold text-slate-100">Step-by-Step Circuit Solution</h3>
+                </div>
+                <button onclick="toggleModal('solution-modal')" class="text-slate-400 hover:text-slate-100 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div id="solution-modal-body" class="space-y-4 text-xs sm:text-sm text-slate-300">
+                <!-- Dynamically populated by JS solver engine -->
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end">
+                <button onclick="toggleModal('solution-modal')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-lg text-xs transition">
+                    Close Solution
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Formulas & Electronics Reference Cheat Sheet -->
+    <div id="formula-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-techCard border border-techBorder w-full max-w-3xl rounded-2xl shadow-2xl p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2 text-cyan-400">
+                    <i class="fa-solid fa-book-open-reader text-lg"></i>
+                    <h3 class="text-base font-bold text-slate-100">Parallel Circuit Laws & Reference Sheet</h3>
+                </div>
+                <button onclick="toggleModal('formula-modal')" class="text-slate-400 hover:text-slate-100 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <!-- Rule 1: Voltage Rule -->
+                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <h4 class="font-bold text-cyan-400 text-sm flex items-center space-x-2">
+                        <i class="fa-solid fa-equals"></i>
+                        <span>1. Voltage Across Parallel Branches</span>
+                    </h4>
+                    <p class="text-slate-300 leading-relaxed">
+                        In a parallel circuit, every branch component is connected directly across the voltage source terminals.
+                    </p>
+                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 text-center font-mono font-bold text-cyan-300 text-sm">
+                        $V_S = V_1 = V_2 = V_3 = \dots = V_n$
+                    </div>
+                </div>
+
+                <!-- Rule 2: Kirchhoff's Current Law (KCL) -->
+                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <h4 class="font-bold text-amber-400 text-sm flex items-center space-x-2">
+                        <i class="fa-solid fa-diagram-project"></i>
+                        <span>2. Kirchhoff's Current Law (KCL)</span>
+                    </h4>
+                    <p class="text-slate-300 leading-relaxed">
+                        The sum of all individual branch currents entering a junction equals the total current supplied by the source.
+                    </p>
+                    <div class="bg-slate-950 p-2.5 rounded border border-slate-800 text-center font-mono font-bold text-amber-300 text-sm">
+                        $I_T = I_1 + I_2 + I_3 + \dots + I_n$
+                    </div>
+                </div>
+
+                <!-- Rule 3: Equivalent Resistance Formula -->
+                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <h4 class="font-bold text-emerald-400 text-sm flex items-center space-x-2">
+                        <i class="fa-solid fa-calculator"></i>
+                        <span>3. Total Resistance ($R_{eq}$) Formulas</span>
+                    </h4>
+                    <p class="text-slate-300 leading-relaxed">
+                        <strong>General Reciprocal Formula (2 or 3+ branches):</strong>
+                    </p>
+                    <div class="bg-slate-950 p-2 rounded border border-slate-800 text-center font-mono font-bold text-emerald-300">
+                        $\frac{1}{R_{eq}} = \frac{1}{R_1} + \frac{1}{R_2} + \frac{1}{R_3}$
+                    </div>
+                    <p class="text-slate-300 leading-relaxed pt-1">
+                        <strong>Product-Over-Sum Shortcut (2 Resistors ONLY):</strong>
+                    </p>
+                    <div class="bg-slate-950 p-2 rounded border border-slate-800 text-center font-mono font-bold text-emerald-300">
+                        $R_{eq} = \frac{R_1 \times R_2}{R_1 + R_2}$
+                    </div>
+                </div>
+
+                <!-- Rule 4: Ohm's Law & Power -->
+                <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
+                    <h4 class="font-bold text-rose-400 text-sm flex items-center space-x-2">
+                        <i class="fa-solid fa-bolt font-bold"></i>
+                        <span>4. Branch Currents & Circuit Power</span>
+                    </h4>
+                    <p class="text-slate-300 leading-relaxed">
+                        Calculate current for each individual branch using Ohm's Law:
+                    </p>
+                    <div class="bg-slate-950 p-2 rounded border border-slate-800 text-center font-mono font-bold text-rose-300">
+                        $I_n = \frac{V_S}{R_n}$
+                    </div>
+                    <p class="text-slate-300 leading-relaxed pt-1">
+                        Total circuit power dissipation:
+                    </p>
+                    <div class="bg-slate-950 p-2 rounded border border-slate-800 text-center font-mono font-bold text-rose-300">
+                        $P_T = V_S \times I_T = P_1 + P_2 + P_3$
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 flex justify-end">
+                <button onclick="toggleModal('formula-modal')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-lg text-xs transition">
+                    Close Reference
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Standard Unit Formatting Helpers
+        function formatResistance(ohms) {
+            if (ohms >= 1e6) {
+                const val = ohms / 1e6;
+                return (val < 10 ? val.toFixed(2) : val < 100 ? val.toFixed(1) : val.toFixed(0)) + ' MΩ';
+            }
+            if (ohms >= 1e3) {
+                const val = ohms / 1e3;
+                return (val < 10 ? val.toFixed(2) : val < 100 ? val.toFixed(1) : val.toFixed(0)) + ' kΩ';
+            }
+            return (ohms < 10 ? ohms.toFixed(2) : ohms.toFixed(1)) + ' Ω';
+        }
+
+        function formatCurrent(amps) {
+            if (amps >= 1) return amps.toFixed(2) + ' A';
+            if (amps >= 1e-3) return (amps * 1e3).toFixed(2) + ' mA';
+            if (amps >= 1e-6) return (amps * 1e6).toFixed(2) + ' µA';
+            if (amps >= 1e-9) return (amps * 1e9).toFixed(2) + ' nA';
+            return amps.toExponential(2) + ' A';
+        }
+
+        function formatPower(watts) {
+            if (watts >= 1e3) return (watts / 1e3).toFixed(2) + ' kW';
+            if (watts >= 1) return watts.toFixed(2) + ' W';
+            if (watts >= 1e-3) return (watts * 1e3).toFixed(2) + ' mW';
+            if (watts >= 1e-6) return (watts * 1e6).toFixed(2) + ' µW';
+            return watts.toFixed(2) + ' W';
+        }
+
+        // Core Application State Object
+        const state = {
+            mode: 'explorer', // 'explorer' or 'practice'
+            branches: 2,       // 2 or 3
+            difficulty: 'easy',// 'easy', 'medium', 'hard'
+            conventionalCurrent: true, // true: + to -, false: - to +
+            animationActive: true,
+            
+            // Explorer Mode Parameters (Base units: Volts, Ohms)
+            explorer: {
+                vs: 12.0,
+                r1: 10000.0, // 10 kΩ
+                r2: 15000.0, // 15 kΩ
+                r3: 30000.0  // 30 kΩ
+            },
+
+            // Practice Quiz Parameters
+            quiz: {
+                vs: 12.0,
+                r1: 10000.0,
+                r2: 15000.0,
+                r3: 30000.0,
+                req: 6000.0,
+                it: 0.002,
+                i1: 0.0012,
+                i2: 0.0008,
+                i3: 0.0004,
+                streak: 0,
+                generated: false
+            }
+        };
+
+        function setAppMode(mode) {
+            state.mode = mode;
+            const btnExplorer = document.getElementById('btn-mode-explorer');
+            const btnPractice = document.getElementById('btn-mode-practice');
+            const panelExplorer = document.getElementById('panel-explorer');
+            const panelPractice = document.getElementById('panel-practice');
+
+            if (mode === 'explorer') {
+                btnExplorer.className = "px-3 py-1.5 rounded-md transition-all duration-200 flex items-center space-x-1.5 bg-cyan-600 text-white shadow";
+                btnPractice.className = "px-3 py-1.5 rounded-md transition-all duration-200 flex items-center space-x-1.5 text-slate-300 hover:text-white";
+                panelExplorer.classList.remove('hidden');
+                panelPractice.classList.add('hidden');
+            } else {
+                btnPractice.className = "px-3 py-1.5 rounded-md transition-all duration-200 flex items-center space-x-1.5 bg-amber-600 text-white shadow";
+                btnExplorer.className = "px-3 py-1.5 rounded-md transition-all duration-200 flex items-center space-x-1.5 text-slate-300 hover:text-white";
+                panelPractice.classList.remove('hidden');
+                panelExplorer.classList.add('hidden');
+                if (!state.quiz.generated) {
+                    generateNewQuizProblem();
+                }
+            }
+            updateUI();
+        }
+
+        function setBranchCount(count) {
+            state.branches = count;
+            const btn2 = document.getElementById('btn-branch-2');
+            const btn3 = document.getElementById('btn-branch-3');
+            const label = document.getElementById('branch-count-label');
+            const containerR3 = document.getElementById('container-r3-input');
+            const quizR3 = document.getElementById('quiz-container-i3');
+
+            if (label) label.innerText = count;
+
+            if (count === 2) {
+                btn2.className = "px-2.5 py-1.5 rounded-md transition-all bg-cyan-600 text-white shadow";
+                btn3.className = "px-2.5 py-1.5 rounded-md transition-all text-slate-300 hover:text-white";
+                if (containerR3) containerR3.classList.add('hidden');
+                if (quizR3) quizR3.classList.add('hidden');
+            } else {
+                btn3.className = "px-2.5 py-1.5 rounded-md transition-all bg-cyan-600 text-white shadow";
+                btn2.className = "px-2.5 py-1.5 rounded-md transition-all text-slate-300 hover:text-white";
+                if (containerR3) containerR3.classList.remove('hidden');
+                if (quizR3) quizR3.classList.remove('hidden');
+            }
+
+            if (state.mode === 'practice') {
+                generateNewQuizProblem();
+            } else {
+                updateUI();
+            }
+        }
+
+        function toggleCurrentDirection() {
+            state.conventionalCurrent = !state.conventionalCurrent;
+            const text = document.getElementById('current-dir-text');
+            if (text) {
+                text.innerHTML = state.conventionalCurrent 
+                    ? 'Conventional Flow (+${\\to}-$'
+                    : 'Electron Flow (-${\\to}+$)';
+            }
+            renderCircuitSVG();
+        }
+
+        function toggleAnimation() {
+            state.animationActive = !state.animationActive;
+            const btn = document.getElementById('anim-toggle-btn');
+            if (btn) {
+                btn.innerHTML = state.animationActive 
+                    ? '<i class="fa-solid fa-pause"></i>' 
+                    : '<i class="fa-solid fa-play"></i>';
+                btn.title = state.animationActive ? "Pause Flow Animation" : "Play Flow Animation";
+            }
+            renderCircuitSVG();
+        }
+
+        function setDifficulty(diff) {
+            state.difficulty = diff;
+            ['easy', 'medium', 'hard'].forEach(d => {
+                const btn = document.getElementById(`diff-${d}`);
+                if (btn) {
+                    if (d === diff) {
+                        btn.className = "px-2.5 py-1 rounded transition bg-cyan-600 text-white font-semibold";
+                    } else {
+                        btn.className = "px-2.5 py-1 rounded transition text-slate-400 hover:text-slate-200";
+                    }
+                }
+            });
+            if (state.mode === 'practice') {
+                generateNewQuizProblem();
+            }
+        }
+
+        function onExplorerValueChange(key, val) {
+            const num = parseFloat(val);
+            if (isNaN(num) || num <= 0) return;
+            state.explorer[key] = num;
+            
+            if (key === 'vs') {
+                const range = document.getElementById('input-vs-range');
+                const number = document.getElementById('input-vs-number');
+                if (range) range.value = num;
+                if (number) number.value = num;
+            }
+            updateUI();
+        }
+
+        function onLogSliderChange(key, logVal) {
+            const ohms = Math.pow(10, parseFloat(logVal));
+            state.explorer[key] = ohms;
+            syncResistorInputControls(key, ohms);
+            updateUI();
+        }
+
+        function onResistorInputChange(key) {
+            const numVal = parseFloat(document.getElementById(`input-${key}-number`).value);
+            const unitMultiplier = parseFloat(document.getElementById(`input-${key}-unit`).value);
+            
+            if (isNaN(numVal) || numVal <= 0) return;
+
+            const ohms = Math.max(1, Math.min(100000000, numVal * unitMultiplier));
+            state.explorer[key] = ohms;
+
+            const logVal = Math.log10(ohms);
+            const slider = document.getElementById(`input-${key}-range`);
+            if (slider) slider.value = logVal;
+
+            updateUI();
+        }
+
+        function syncResistorInputControls(key, ohms) {
+            let unitMultiplier = 1;
+            let displayVal = ohms;
+
+            if (ohms >= 1e6) {
+                unitMultiplier = 1e6;
+                displayVal = ohms / 1e6;
+            } else if (ohms >= 1e3) {
+                unitMultiplier = 1e3;
+                displayVal = ohms / 1e3;
+            }
+
+            const numElem = document.getElementById(`input-${key}-number`);
+            const unitElem = document.getElementById(`input-${key}-unit`);
+
+            if (numElem) numElem.value = parseFloat(displayVal.toFixed(displayVal < 10 ? 2 : 1));
+            if (unitElem) unitElem.value = unitMultiplier;
+        }
+
+        function resetExplorerDefaults() {
+            playSound('click');
+            state.explorer = { vs: 12.0, r1: 10000.0, r2: 15000.0, r3: 30000.0 };
+            document.getElementById('input-vs-range').value = 12;
+            document.getElementById('input-vs-number').value = 12;
+
+            ['r1', 'r2', 'r3'].forEach(k => {
+                const ohms = state.explorer[k];
+                const slider = document.getElementById(`input-${k}-range`);
+                if (slider) slider.value = Math.log10(ohms);
+                syncResistorInputControls(k, ohms);
+            });
+            updateUI();
+        }
+
+        function calculateCircuitData(vs, r1, r2, r3, numBranches) {
+            const g1 = 1 / r1;
+            const g2 = 1 / r2;
+            const g3 = numBranches === 3 ? 1 / r3 : 0;
+            const gTotal = g1 + g2 + g3;
+
+            const req = 1 / gTotal;
+            const i1 = vs / r1;
+            const i2 = vs / r2;
+            const i3 = numBranches === 3 ? vs / r3 : 0;
+            const it = i1 + i2 + i3;
+
+            const p1 = vs * i1;
+            const p2 = vs * i2;
+            const p3 = numBranches === 3 ? vs * i3 : 0;
+            const pt = p1 + p2 + p3;
+
+            return {
+                vs, numBranches,
+                r1, r2, r3: numBranches === 3 ? r3 : 0,
+                g1, g2, g3, gTotal,
+                v1: vs, v2: vs, v3: numBranches === 3 ? vs : 0,
+                i1, i2, i3, it,
+                p1, p2, p3, pt,
+                req
+            };
+        }
+
+        function renderResistorBranch(x, topY, botY, midY, name, rVal, iVal, color, isFlowing, particleClass) {
+            return `
+                <g transform="translate(${x}, 0)">
+                    <!-- Branch Wire -->
+                    <line x1="0" y1="${topY}" x2="0" y2="${midY - 30}" stroke="#64748b" stroke-width="3" />
+                    <line x1="0" y1="${midY + 30}" x2="0" y2="${botY}" stroke="#64748b" stroke-width="3" />
+
+                    ${isFlowing ? `
+                        <line x1="0" y1="${topY}" x2="0" y2="${botY}" 
+                              stroke="${color}" stroke-width="3" class="${particleClass}" />
+                    ` : ''}
+
+                    <!-- IEEE Zig-Zag Resistor Symbol -->
+                    <path d="M 0 ${midY - 30} 
+                             L 10 ${midY - 22} 
+                             L -10 ${midY - 12} 
+                             L 10 ${midY - 2} 
+                             L -10 ${midY + 8} 
+                             L 10 ${midY + 18} 
+                             L 0 ${midY + 26} 
+                             L 0 ${midY + 30}" 
+                          stroke="${color}" stroke-width="3.5" fill="none" stroke-linejoin="round" />
+
+                    <!-- Resistor Label & Value Card -->
+                    <rect x="-42" y="${midY - 14}" width="84" height="28" rx="6" fill="#0f172a" stroke="${color}" stroke-width="1.5" />
+                    <text x="0" y="${midY - 1}" fill="${color}" font-size="11" font-family="JetBrains Mono" font-weight="bold" text-anchor="middle">
+                        ${name}: ${formatResistance(rVal)}
+                    </text>
+                    <text x="0" y="${midY + 26}" fill="#94a3b8" font-size="10" font-family="JetBrains Mono" text-anchor="middle">
+                        I = ${formatCurrent(iVal)}
+                    </text>
+                </g>
+            `;
+        }
+
+        function renderCircuitSVG() {
+            const svg = document.getElementById('circuit-svg');
+            if (!svg) return;
+
+            const d = state.mode === 'explorer'
+                ? calculateCircuitData(state.explorer.vs, state.explorer.r1, state.explorer.r2, state.explorer.r3, state.branches)
+                : calculateCircuitData(state.quiz.vs, state.quiz.r1, state.quiz.r2, state.quiz.r3, state.branches);
+
+            const numB = d.numBranches;
+            const isConv = state.conventionalCurrent;
+            const isAnim = state.animationActive;
+            const particleClass = isAnim ? (isConv ? "current-particle" : "current-particle-reverse") : "";
+
+            const xSource = 70;
+            const xB1 = 250;
+            const xB2 = numB === 2 ? 480 : 380;
+            const xB3 = 500;
+            const topY = 50;
+            const botY = 270;
+            const midY = 160;
+            const maxX = numB === 2 ? xB2 : xB3;
+
+            let svgContent = `
+                <!-- Main Outer Loop Wires -->
+                <line x1="${xSource}" y1="${topY}" x2="${maxX}" y2="${topY}" stroke="#64748b" stroke-width="3" />
+                <line x1="${xSource}" y1="${botY}" x2="${maxX}" y2="${botY}" stroke="#64748b" stroke-width="3" />
+                
+                <line x1="${xSource}" y1="${topY}" x2="${xSource}" y2="${midY - 25}" stroke="#64748b" stroke-width="3" />
+                <line x1="${xSource}" y1="${midY + 25}" x2="${xSource}" y2="${botY}" stroke="#64748b" stroke-width="3" />
+
+                ${isAnim ? `
+                    <line x1="${xSource}" y1="${topY}" x2="${maxX}" y2="${topY}" stroke="#06b6d4" stroke-width="3" class="${particleClass}" />
+                    <line x1="${xSource}" y1="${botY}" x2="${maxX}" y2="${botY}" stroke="#06b6d4" stroke-width="3" class="${particleClass}" />
+                    <line x1="${xSource}" y1="${topY}" x2="${xSource}" y2="${botY}" stroke="#06b6d4" stroke-width="3" class="${particleClass}" />
+                ` : ''}
+
+                <!-- DC Voltage Source Symbol -->
+                <g transform="translate(${xSource}, ${midY})">
+                    <line x1="-18" y1="-12" x2="18" y2="-12" stroke="#06b6d4" stroke-width="4" />
+                    <line x1="-10" y1="12" x2="10" y2="12" stroke="#64748b" stroke-width="4" />
+                    
+                    <text x="-28" y="-10" fill="#06b6d4" font-size="14" font-weight="bold" font-family="JetBrains Mono">+</text>
+                    <text x="-28" y="16" fill="#94a3b8" font-size="14" font-weight="bold" font-family="JetBrains Mono">−</text>
+
+                    <rect x="-45" y="-12" width="90" height="24" rx="4" fill="#0f172a" stroke="#06b6d4" stroke-width="1.5" transform="translate(0, 35)" />
+                    <text x="0" y="51" fill="#06b6d4" font-size="11" font-family="JetBrains Mono" font-weight="bold" text-anchor="middle">
+                        Vs: ${d.vs.toFixed(1)}V
+                    </text>
+                </g>
+
+                <!-- Junction Nodes -->
+                <circle cx="${xB1}" cy="${topY}" r="4" fill="#06b6d4" />
+                <circle cx="${xB1}" cy="${botY}" r="4" fill="#06b6d4" />
+                <circle cx="${xB2}" cy="${topY}" r="4" fill="#06b6d4" />
+                <circle cx="${xB2}" cy="${botY}" r="4" fill="#06b6d4" />
+                ${numB === 3 ? `
+                    <circle cx="${xB3}" cy="${topY}" r="4" fill="#06b6d4" />
+                    <circle cx="${xB3}" cy="${botY}" r="4" fill="#06b6d4" />
+                ` : ''}
+
+                <!-- Resistor Branch 1 -->
+                ${renderResistorBranch(xB1, topY, botY, midY, "R1", d.r1, d.i1, "#f59e0b", isAnim, particleClass)}
+
+                <!-- Resistor Branch 2 -->
+                ${renderResistorBranch(xB2, topY, botY, midY, "R2", d.r2, d.i2, "#10b981", isAnim, particleClass)}
+
+                <!-- Resistor Branch 3 (Conditional) -->
+                ${numB === 3 ? renderResistorBranch(xB3, topY, botY, midY, "R3", d.r3, d.i3, "#a855f7", isAnim, particleClass) : ''}
+            `;
+
+            svg.innerHTML = svgContent;
+        }
+
+        function renderCurrentDivisionBars(data) {
+            const container = document.getElementById('current-bars-container');
+            if (!container) return;
+
+            const b1Pct = ((data.i1 / data.it) * 100).toFixed(1);
+            const b2Pct = ((data.i2 / data.it) * 100).toFixed(1);
+            const b3Pct = data.numBranches === 3 ? ((data.i3 / data.it) * 100).toFixed(1) : 0;
+
+            let html = `
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs font-mono">
+                        <span class="text-amber-400 font-semibold">Branch 1 ($I_1 = ${formatCurrent(data.i1)}$)</span>
+                        <span class="text-slate-400">${b1Pct}% of Total</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700/50">
+                        <div class="bg-amber-500 h-2.5 rounded-full transition-all duration-300" style="width: ${b1Pct}%"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <div class="flex justify-between text-xs font-mono">
+                        <span class="text-emerald-400 font-semibold">Branch 2 ($I_2 = ${formatCurrent(data.i2)}$)</span>
+                        <span class="text-slate-400">${b2Pct}% of Total</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700/50">
+                        <div class="bg-emerald-500 h-2.5 rounded-full transition-all duration-300" style="width: ${b2Pct}%"></div>
+                    </div>
+                </div>
+            `;
+
+            if (data.numBranches === 3) {
+                html += `
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs font-mono">
+                            <span class="text-purple-400 font-semibold">Branch 3 ($I_3 = ${formatCurrent(data.i3)}$)</span>
+                            <span class="text-slate-400">${b3Pct}% of Total</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700/50">
+                            <div class="bg-purple-500 h-2.5 rounded-full transition-all duration-300" style="width: ${b3Pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function updateUI() {
+            const data = state.mode === 'explorer'
+                ? calculateCircuitData(state.explorer.vs, state.explorer.r1, state.explorer.r2, state.explorer.r3, state.branches)
+                : calculateCircuitData(state.quiz.vs, state.quiz.r1, state.quiz.r2, state.quiz.r3, state.branches);
+
+            document.getElementById('stat-vs').innerText = `${data.vs.toFixed(1)} V`;
+            document.getElementById('stat-req').innerText = formatResistance(data.req);
+            document.getElementById('stat-it').innerText = formatCurrent(data.it);
+            document.getElementById('stat-pt').innerText = formatPower(data.pt);
+
+            document.getElementById('vs-val-display').innerText = `${state.explorer.vs.toFixed(1)} V`;
+            document.getElementById('r1-val-display').innerText = formatResistance(state.explorer.r1);
+            document.getElementById('r2-val-display').innerText = formatResistance(state.explorer.r2);
+            document.getElementById('r3-val-display').innerText = formatResistance(state.explorer.r3);
+
+            const tbody = document.getElementById('matrix-table-body');
+            let matrixHTML = `
+                <tr>
+                    <td class="px-3 py-2 font-bold text-amber-400">Branch 1 ($R_1$)</td>
+                    <td class="px-3 py-2">${formatResistance(data.r1)}</td>
+                    <td class="px-3 py-2">${data.v1.toFixed(1)} V</td>
+                    <td class="px-3 py-2">${formatCurrent(data.i1)}</td>
+                    <td class="px-3 py-2">${formatPower(data.p1)}</td>
+                </tr>
+                <tr>
+                    <td class="px-3 py-2 font-bold text-emerald-400">Branch 2 ($R_2$)</td>
+                    <td class="px-3 py-2">${formatResistance(data.r2)}</td>
+                    <td class="px-3 py-2">${data.v2.toFixed(1)} V</td>
+                    <td class="px-3 py-2">${formatCurrent(data.i2)}</td>
+                    <td class="px-3 py-2">${formatPower(data.p2)}</td>
+                </tr>
+            `;
+
+            if (state.branches === 3) {
+                matrixHTML += `
+                    <tr>
+                        <td class="px-3 py-2 font-bold text-purple-400">Branch 3 ($R_3$)</td>
+                        <td class="px-3 py-2">${formatResistance(data.r3)}</td>
+                        <td class="px-3 py-2">${data.v3.toFixed(1)} V</td>
+                        <td class="px-3 py-2">${formatCurrent(data.i3)}</td>
+                        <td class="px-3 py-2">${formatPower(data.p3)}</td>
+                    </tr>
+                `;
+            }
+
+            matrixHTML += `
+                <tr class="bg-slate-800/80 font-bold border-t border-slate-700">
+                    <td class="px-3 py-2 text-cyan-400">Total Circuit</td>
+                    <td class="px-3 py-2 text-emerald-400">${formatResistance(data.req)}</td>
+                    <td class="px-3 py-2 text-cyan-400">${data.vs.toFixed(1)} V</td>
+                    <td class="px-3 py-2 text-amber-400">${formatCurrent(data.it)}</td>
+                    <td class="px-3 py-2 text-rose-400">${formatPower(data.pt)}</td>
+                </tr>
+            `;
+            tbody.innerHTML = matrixHTML;
+
+            renderCurrentDivisionBars(data);
+            renderCircuitSVG();
+        }
+
+        function generateNewQuizProblem() {
+            playSound('click');
+            
+            const banner = document.getElementById('quiz-feedback-banner');
+            banner.classList.add('hidden');
+
+            ['req', 'it', 'i1', 'i2', 'i3'].forEach(id => {
+                const input = document.getElementById(`quiz-input-${id}`);
+                const badge = document.getElementById(`badge-${id}`);
+                if (input) {
+                    input.value = '';
+                    input.className = "w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none focus:border-cyan-500 pr-10";
+                }
+                if (badge) badge.classList.add('hidden');
+            });
+
+            let vs, r1, r2, r3;
+
+            if (state.difficulty === 'easy') {
+                vs = [12, 24, 48][Math.floor(Math.random() * 3)];
+                const rOptions = [100, 220, 470, 1000, 2200, 4700, 10000, 22000, 47000, 100000];
+                r1 = rOptions[Math.floor(Math.random() * rOptions.length)];
+                r2 = rOptions[Math.floor(Math.random() * rOptions.length)];
+                r3 = rOptions[Math.floor(Math.random() * rOptions.length)];
+            } else if (state.difficulty === 'medium') {
+                vs = [9, 12, 15, 24, 60][Math.floor(Math.random() * 5)];
+                const rOptions = [1000, 3300, 10000, 47000, 100000, 470000, 1000000, 2200000, 10000000];
+                r1 = rOptions[Math.floor(Math.random() * rOptions.length)];
+                r2 = rOptions[Math.floor(Math.random() * rOptions.length)];
+                r3 = rOptions[Math.floor(Math.random() * rOptions.length)];
+            } else {
+                vs = Math.floor(Math.random() * 90) + 10;
+                r1 = Math.round(Math.pow(10, Math.random() * 8));
+                r2 = Math.round(Math.pow(10, Math.random() * 8));
+                r3 = Math.round(Math.pow(10, Math.random() * 8));
+            }
+
+            const solved = calculateCircuitData(vs, r1, r2, r3, state.branches);
+
+            state.quiz.vs = vs;
+            state.quiz.r1 = r1;
+            state.quiz.r2 = r2;
+            state.quiz.r3 = r3;
+            state.quiz.req = solved.req;
+            state.quiz.it = solved.it;
+            state.quiz.i1 = solved.i1;
+            state.quiz.i2 = solved.i2;
+            state.quiz.i3 = solved.i3;
+            state.quiz.generated = true;
+
+            const givenText = state.branches === 2
+                ? `V_S = ${vs}V, R_1 = ${formatResistance(r1)}, R_2 = ${formatResistance(r2)}`
+                : `V_S = ${vs}V, R_1 = ${formatResistance(r1)}, R_2 = ${formatResistance(r2)}, R_3 = ${formatResistance(r3)}`;
+            
+            document.getElementById('quiz-given-text').innerText = givenText;
+
+            selectAppropriateQuizUnit('req', solved.req);
+            selectAppropriateQuizUnit('it', solved.it);
+            selectAppropriateQuizUnit('i1', solved.i1);
+            selectAppropriateQuizUnit('i2', solved.i2);
+            if (state.branches === 3) selectAppropriateQuizUnit('i3', solved.i3);
+
+            buildStepByStepSolutionHTML(solved);
+            updateUI();
+        }
+
+        function selectAppropriateQuizUnit(id, baseVal) {
+            const dropdown = document.getElementById(`quiz-unit-${id}`);
+            if (!dropdown) return;
+
+            if (id === 'req') {
+                if (baseVal >= 1e6) dropdown.value = "1000000";
+                else if (baseVal >= 1e3) dropdown.value = "1000";
+                else dropdown.value = "1";
+            } else {
+                if (baseVal >= 1) dropdown.value = "1";
+                else if (baseVal >= 1e-3) dropdown.value = "0.001";
+                else dropdown.value = "0.000001";
+            }
+        }
+
+        function checkQuizAnswers() {
+            const numBranches = state.branches;
+
+            const getUserVal = (id) => {
+                const val = parseFloat(document.getElementById(`quiz-input-${id}`).value);
+                const unit = parseFloat(document.getElementById(`quiz-unit-${id}`).value);
+                return val * unit;
+            };
+            
+            const userReq = getUserVal('req');
+            const userIt = getUserVal('it');
+            const userI1 = getUserVal('i1');
+            const userI2 = getUserVal('i2');
+            const userI3 = numBranches === 3 ? getUserVal('i3') : 0;
+
+            const checks = [
+                { id: 'req', user: userReq, actual: state.quiz.req },
+                { id: 'it', user: userIt, actual: state.quiz.it },
+                { id: 'i1', user: userI1, actual: state.quiz.i1 },
+                { id: 'i2', user: userI2, actual: state.quiz.i2 },
+            ];
+
+            if (numBranches === 3) {
+                checks.push({ id: 'i3', user: userI3, actual: state.quiz.i3 });
+            }
+
+            let allCorrect = true;
+            let missingInputs = false;
+
+            checks.forEach(item => {
+                const input = document.getElementById(`quiz-input-${item.id}`);
+                const badge = document.getElementById(`badge-${item.id}`);
+                
+                if (isNaN(item.user)) {
+                    missingInputs = true;
+                    allCorrect = false;
+                    input.className = "w-full bg-slate-800 border border-amber-500 rounded-lg px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none pr-10";
+                    return;
+                }
+
+                const margin = Math.max(Math.abs(item.actual * 0.03), 1e-9);
+                const isCorrect = Math.abs(item.user - item.actual) <= margin;
+
+                badge.classList.remove('hidden');
+
+                if (isCorrect) {
+                    input.className = "w-full bg-slate-800 border border-emerald-500 rounded-lg px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none pr-10";
+                    badge.innerHTML = '<i class="fa-solid fa-check text-emerald-400"></i>';
+                } else {
+                    allCorrect = false;
+                    input.className = "w-full bg-slate-800 border border-rose-500 rounded-lg px-3 py-2 text-sm font-mono text-slate-100 focus:outline-none pr-10";
+                    badge.innerHTML = '<i class="fa-solid fa-xmark text-rose-400"></i>';
+                }
+            });
+
+            const banner = document.getElementById('quiz-feedback-banner');
+            const msg = document.getElementById('quiz-feedback-msg');
+            const icon = document.getElementById('quiz-feedback-icon');
+
+            banner.classList.remove('hidden');
+
+            if (missingInputs) {
+                playSound('error');
+                banner.className = "p-3 rounded-xl text-xs flex items-center space-x-2.5 transition bg-amber-500/10 text-amber-300 border border-amber-500/30";
+                icon.className = "fa-solid fa-triangle-exclamation text-amber-400";
+                msg.innerText = "Please fill in all input answer fields before submitting!";
+            } else if (allCorrect) {
+                playSound('success');
+                state.quiz.streak += 1;
+                document.getElementById('quiz-streak-count').innerText = `Streak: ${state.quiz.streak}`;
+
+                banner.className = "p-3 rounded-xl text-xs flex items-center space-x-2.5 transition bg-emerald-500/10 text-emerald-300 border border-emerald-500/30";
+                icon.className = "fa-solid fa-circle-check text-emerald-400";
+                msg.innerText = "Outstanding! All calculated branch values are 100% correct!";
+            } else {
+                playSound('error');
+                state.quiz.streak = 0;
+                document.getElementById('quiz-streak-count').innerText = `Streak: 0`;
+
+                banner.className = "p-3 rounded-xl text-xs flex items-center space-x-2.5 transition bg-rose-500/10 text-rose-300 border border-rose-500/30";
+                icon.className = "fa-solid fa-circle-xmark text-rose-400";
+                msg.innerText = "Some calculations are inaccurate. Click 'Solution' to inspect step-by-step math!";
+            }
+        }
+
+        function buildStepByStepSolutionHTML(d) {
+            const is3 = d.numBranches === 3;
+            
+            let html = `
+                <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
+                    <h4 class="font-bold text-cyan-400 flex items-center space-x-2">
+                        <span>Step 1: Apply Parallel Voltage Rule</span>
+                    </h4>
+                    <p class="text-slate-300">In a parallel circuit, source voltage drops equally across each parallel branch:</p>
+                    <div class="font-mono bg-slate-950 p-2 rounded text-cyan-300 font-bold">
+                        V_S = V_1 = V_2 ${is3 ? '= V_3' : ''} = ${d.vs.toFixed(1)} V
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
+                    <h4 class="font-bold text-amber-400 flex items-center space-x-2">
+                        <span>Step 2: Calculate Individual Branch Currents (Ohm's Law)</span>
+                    </h4>
+                    <p class="text-slate-300">Divide source voltage by individual branch resistances ($I_n = V_S / R_n$):</p>
+                    <div class="font-mono bg-slate-950 p-2 rounded text-amber-300 space-y-1">
+                        <div>I_1 = ${d.vs.toFixed(1)}V / ${formatResistance(d.r1)} = <strong>${formatCurrent(d.i1)}</strong></div>
+                        <div>I_2 = ${d.vs.toFixed(1)}V / ${formatResistance(d.r2)} = <strong>${formatCurrent(d.i2)}</strong></div>
+                        ${is3 ? `<div>I_3 = ${d.vs.toFixed(1)}V / ${formatResistance(d.r3)} = <strong>${formatCurrent(d.i3)}</strong></div>` : ''}
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
+                    <h4 class="font-bold text-emerald-400 flex items-center space-x-2">
+                        <span>Step 3: Sum Total Current (Kirchhoff's Current Law)</span>
+                    </h4>
+                    <p class="text-slate-300">Add branch currents together ($I_T = I_1 + I_2 ${is3 ? '+ I_3' : ''}$):</p>
+                    <div class="font-mono bg-slate-950 p-2 rounded text-emerald-300 font-bold">
+                        I_T = ${formatCurrent(d.i1)} + ${formatCurrent(d.i2)} ${is3 ? `+ ${formatCurrent(d.i3)}` : ''} = ${formatCurrent(d.it)}
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
+                    <h4 class="font-bold text-purple-400 flex items-center space-x-2">
+                        <span>Step 4: Calculate Total Equivalent Resistance ($R_{eq}$)</span>
+                    </h4>
+                    <p class="text-slate-300"><strong>Method A: Ohm's Law Total</strong> ($R_{eq} = V_S / I_T$)</p>
+                    <div class="font-mono bg-slate-950 p-2 rounded text-purple-300 font-bold mb-2">
+                        R_{eq} = ${d.vs.toFixed(1)}V / ${formatCurrent(d.it)} = ${formatResistance(d.req)}
+                    </div>
+
+                    <p class="text-slate-300"><strong>Method B: Reciprocal Conductance Formula</strong></p>
+                    <div class="font-mono bg-slate-950 p-2 rounded text-purple-300 space-y-1">
+                        <div>1/R_{eq} = 1/${formatResistance(d.r1)} + 1/${formatResistance(d.r2)} ${is3 ? `+ 1/${formatResistance(d.r3)}` : ''}</div>
+                        <div>1/R_{eq} = ${d.g1.toExponential(3)} S + ${d.g2.toExponential(3)} S ${is3 ? `+ ${d.g3.toExponential(3)} S` : ''} = ${(d.gTotal).toExponential(3)} S</div>
+                        <div>R_{eq} = 1 / ${(d.gTotal).toExponential(3)} S = <strong>${formatResistance(d.req)}</strong></div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('solution-modal-body').innerHTML = html;
+        }
+
+        function playSound(type) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                if (type === 'click') {
+                    osc.frequency.value = 600;
+                    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.05);
+                } else if (type === 'success') {
+                    osc.frequency.setValueAtTime(523.25, ctx.currentTime);
+                    osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.3);
+                } else if (type === 'error') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, ctx.currentTime);
+                    osc.frequency.setValueAtTime(160, ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.25);
+                }
+            } catch(e) {
+                // AudioContext fallback
+            }
+        }
+
+        function toggleModal(modalId) {
+            playSound('click');
+            const modal = document.getElementById(modalId);
+            modal.classList.toggle('hidden');
+        }
+
+        window.onload = function() {
+            setBranchCount(2);
+            setDifficulty('easy');
+            setAppMode('explorer');
+            resetExplorerDefaults();
+        };
+    </script>
+</body>
+</html>
